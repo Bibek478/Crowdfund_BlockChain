@@ -17,6 +17,9 @@ const CampaignDetails = () => {
   const [donators, setDonators] = useState([]);
 
   const remainingDays = daysLeft(state.deadline);
+  const targetReached = parseFloat(state.amountCollected) >= parseFloat(state.target);
+  const timeUp = remainingDays <= 0;
+  const isFundDisabled = timeUp || targetReached;
 
   const fetchDonators = async () => {
     const data = await getDonations(state.pId);
@@ -29,12 +32,18 @@ const CampaignDetails = () => {
   }, [contract, address])
 
   const handleDonate = async () => {
+    if (isFundDisabled) return;
+    if (!amount || parseFloat(amount) <= 0) return;
+
     setIsLoading(true);
-
-    await donate(state.pId, amount); 
-
-    navigate('/')
-    setIsLoading(false);
+    try {
+      await donate(state.pId, amount);
+      navigate('/');
+    } catch (error) {
+      console.error('Donation failed', error);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -109,9 +118,10 @@ const CampaignDetails = () => {
                 type="number"
                 placeholder="ETH 0.1"
                 step="0.01"
-                className="w-full py-[10px] sm:px-[20px] px-[15px] outline-none border-[1px] border-[#3a3a43] bg-transparent font-epilogue text-white text-[18px] leading-[30px] placeholder:text-[#4b5264] rounded-[10px]"
+                className={`w-full py-[10px] sm:px-[20px] px-[15px] outline-none border-[1px] border-[#3a3a43] bg-transparent font-epilogue text-white text-[18px] leading-[30px] placeholder:text-[#4b5264] rounded-[10px] ${isFundDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
+                disabled={isFundDisabled}
               />
 
               {/* <div className="my-[20px] p-4 bg-[#13131a] rounded-[10px]">
@@ -121,9 +131,10 @@ const CampaignDetails = () => {
 
               <CustomButton 
                 btnType="button"
-                title="Fund Campaign"
+                title={isFundDisabled ? 'Funding Closed' : 'Fund Campaign'}
                 styles="w-full bg-[#8c6dfd]"
                 handleClick={handleDonate}
+                disabled={isFundDisabled}
               />
             </div>
           </div>
